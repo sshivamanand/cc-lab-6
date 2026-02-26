@@ -49,6 +49,7 @@ int main() {
         response += "Served by backend: " + std::string(hostname) + "\n";
         
         send(client_fd, response.c_str(), response.length(), 0);
+        sleep(1);
         close(client_fd);
     }
     
