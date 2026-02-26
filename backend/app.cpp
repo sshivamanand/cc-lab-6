@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <string>
 
 int main() {
     char hostname[256];
@@ -42,14 +43,20 @@ int main() {
         int client_fd = accept(server_fd, NULL, NULL);
         if (client_fd < 0) continue;
         
-        // Simple HTTP response
+        // Build a valid HTTP response with Content-Length to avoid truncated reads.
+        std::string body = "Served by backend: " + std::string(hostname) + "\n";
         std::string response = "HTTP/1.1 200 OK\r\n";
         response += "Content-Type: text/plain\r\n";
+        response += "Content-Length: " + std::to_string(body.size()) + "\r\n";
         response += "Connection: close\r\n\r\n";
-        response += "Served by backend: " + std::string(hostname) + "\n";
-        
-        send(client_fd, response.c_str(), response.length(), 0);
-        sleep(1);
+        response += body;
+
+        size_t total_sent = 0;
+        while (total_sent < response.size()) {
+            ssize_t sent = send(client_fd, response.c_str() + total_sent, response.size() - total_sent, 0);
+            if (sent <= 0) break;
+            total_sent += static_cast<size_t>(sent);
+        }
         close(client_fd);
     }
     
